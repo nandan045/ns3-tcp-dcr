@@ -54,6 +54,7 @@ public:
   {
     // Remember to extend IsKindKnown() with new value, when adding values here
     //
+    // Adding delayed congestion response feature to tcp
     END = 0,                    //!< END
     NOP = 1,                    //!< NOP
     MSS = 2,                    //!< MSS
@@ -61,6 +62,8 @@ public:
     SACKPERMITTED = 4,          //!< SACKPERMITTED
     SACK = 5,                   //!< SACK
     TS = 8,                     //!< TS
+    // DCR feature has been added
+    DCR = 9,                    //!< DCR
     UNKNOWN = 255               //!< not a standardized value; for unknown recv'd options
   };
 
