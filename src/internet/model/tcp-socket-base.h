@@ -1269,6 +1269,7 @@ protected:
   Time              m_clockGranularity {Seconds (0.001)}; //!< Clock Granularity used in RTO calcs
   Time              m_delAckTimeout    {Seconds (0.0)};   //!< Time to delay an ACK
   Time              m_persistTimeout   {Seconds (0.0)};   //!< Time between sending 1-byte probes
+  Time              m_rtt;                  //!< Instantaneous Round Trip Time => Used for calculation of delayed time
   Time              m_cnTimeout        {Seconds (0.0)};   //!< Timeout for connection retry
 
   // History of RTT
@@ -1309,6 +1310,7 @@ protected:
   // Options
   bool    m_sackEnabled       {true}; //!< RFC SACK option enabled
   bool    m_winScalingEnabled {true}; //!< Window Scale option enabled (RFC 7323)
+  bool    m_dcrEnabled        {true}; //!< DCR opion enabled
   uint8_t m_rcvWindShift      {0};    //!< Window shift to apply to outgoing segments
   uint8_t m_sndWindShift      {0};    //!< Window shift to apply to incoming segments
   bool     m_timestampEnabled {true}; //!< Timestamp option enabled
@@ -1322,6 +1324,7 @@ protected:
                                                   //!< It is used to avoid comparing with the old m_recover value
                                                   //!< which was set for handling previous congestion event.
   uint32_t               m_retxThresh {3};   //!< Fast Retransmit threshold
+  uint32_t               m_dcrRetxThresh;    //!< Fast Retransmit threshold in the case of DCR 
   bool                   m_limitedTx  {true}; //!< perform limited transmit
 
   // Transmission Control Block
