@@ -81,6 +81,9 @@ TcpSocketBase::GetTypeId (void)
 //                   EnumValue (CLOSED),
 //                   MakeEnumAccessor (&TcpSocketBase::m_state),
 //                   MakeEnumChecker (CLOSED, "Closed"))
+
+// Adding the option of enabling or disabling DCR
+
     .AddAttribute ("MaxSegLifetime",
                    "Maximum segment lifetime in seconds, use for TIME_WAIT state transition to CLOSED state",
                    DoubleValue (120), /* RFC793 says MSL=2 minutes*/
@@ -146,6 +149,10 @@ TcpSocketBase::GetTypeId (void)
     .AddAttribute ("LimitedTransmit", "Enable limited transmit",
                    BooleanValue (true),
                    MakeBooleanAccessor (&TcpSocketBase::m_limitedTx),
+                   MakeBooleanChecker ())
+    .AddAttribute ("DCR", "Enable or disable DCR option",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&TcpSocketBase::m_dcrEnabled),
                    MakeBooleanChecker ())
     .AddAttribute ("UseEcn", "Parameter to set ECN functionality",
                    EnumValue (TcpSocketState::Off),
@@ -341,6 +348,10 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_highRxMark (sock.m_highRxMark),
     m_highRxAckMark (sock.m_highRxAckMark),
     m_sackEnabled (sock.m_sackEnabled),
+    // Enable or disable DCR
+    m_dcrEnabled (sock.m_dcrEnabled),
+    // Delayed retransmit time for dcr
+    m_dcrRetxThresh (sock.m_dcrRetxThresh),
     m_winScalingEnabled (sock.m_winScalingEnabled),
     m_rcvWindShift (sock.m_rcvWindShift),
     m_sndWindShift (sock.m_sndWindShift),
@@ -1539,6 +1550,8 @@ TcpSocketBase::IsTcpOptionEnabled (uint8_t kind) const
     case TcpOption::SACKPERMITTED:
     case TcpOption::SACK:
       return m_sackEnabled;
+    case TcpOptiion::DCR:
+      return m_dcrEnabled;
     default:
       break;
     }
