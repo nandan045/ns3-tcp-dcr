@@ -351,7 +351,7 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     // Enable or disable DCR
     m_dcrEnabled (sock.m_dcrEnabled),
     // Delayed retransmit time for dcr
-    m_dcrRetxThresh (sock.m_dcrRetxThresh),
+    // m_dcrRetxThresh (sock.m_dcrRetxThresh),
     m_winScalingEnabled (sock.m_winScalingEnabled),
     m_rcvWindShift (sock.m_rcvWindShift),
     m_sndWindShift (sock.m_sndWindShift),
@@ -1550,7 +1550,7 @@ TcpSocketBase::IsTcpOptionEnabled (uint8_t kind) const
     case TcpOption::SACKPERMITTED:
     case TcpOption::SACK:
       return m_sackEnabled;
-    case TcpOptiion::DCR:
+    case TcpOption::DCR:
       return m_dcrEnabled;
     default:
       break;
@@ -1709,11 +1709,12 @@ TcpSocketBase::DupAck (uint32_t currentDelivered)
       if(m_dcrEnabled)
       {
 	SetRetxThresh(3);
-	std::cout<<"retx intially ="<<m_retxThresh<<std::endl;
-	// Formula to find the delayed retransmission time 
-	m_dcrRetxThresh =  m_retxThresh+((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize);
+	std::cout<<"retx intially = "<<m_retxThresh<<std::endl;
+	// Formula to find the delayed retransmission time
+	uint32_t m_dcrRetxThresh =  m_retxThresh+((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize);
 	SetRetxThresh(m_dcrRetxThresh);
-	std::cout<<"retx finally ="<<m_retxThresh<<std::endl;
+	std::cout<<"retx finally = "<<m_retxThresh<<std::endl;
+      }
     }
 
   if (m_tcb->m_congState == TcpSocketState::CA_RECOVERY)
