@@ -1692,6 +1692,9 @@ TcpSocketBase::DupAck (uint32_t currentDelivered)
       ++m_dupAckCount;
     }
 
+  // Modifications in the case of TCP-DCR are done in the CA-OPEN state
+  // When dupacks are received in this state, then we need to start the timer for delayed retransmission time
+
   if (m_tcb->m_congState == TcpSocketState::CA_OPEN)
     {
       // From Open we go Disorder
@@ -1702,6 +1705,15 @@ TcpSocketBase::DupAck (uint32_t currentDelivered)
       m_tcb->m_congState = TcpSocketState::CA_DISORDER;
 
       NS_LOG_DEBUG ("CA_OPEN -> CA_DISORDER");
+
+      if(m_dcrEnabled)
+      {
+	SetRetxThresh(3);
+	std::cout<<"retx intially ="<<m_retxThresh<<std::endl;
+	// Formula to find the delayed retransmission time 
+	m_dcrRetxThresh =  m_retxThresh+((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize);
+	SetRetxThresh(m_dcrRetxThresh);
+	std::cout<<"retx finally ="<<m_retxThresh<<std::endl;
     }
 
   if (m_tcb->m_congState == TcpSocketState::CA_RECOVERY)
@@ -3579,6 +3591,8 @@ TcpSocketBase::EstimateRtt (const TcpHeader& tcpHeader)
 
   if (!m.IsZero ())
     {
+      // Calculating instantaneous ROUND TRIP TIME
+      m_instRtt = m;
       m_rtt->Measurement (m);                // Log the measurement
       // RFC 6298, clause 2.4
       m_rto = Max (m_rtt->GetEstimate () + Max (m_clockGranularity, m_rtt->GetVariation () * 4), m_minRto);
