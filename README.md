@@ -27,7 +27,7 @@ TCP DCR attempts to solve this issue. It increases the time at which fast retran
 
 ## Use the following steps to build ns-3
 
-1) Configure and build the repository using the following commands:
+1) Configure and build the repository using the following commands: </br>
     Configuring ns-3 </br>
  - ./waf -d optimized configure </br>
     Build ns-3 using waf </br>
