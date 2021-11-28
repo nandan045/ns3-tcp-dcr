@@ -1,126 +1,50 @@
+### Overview		<br/>
+Congestion control is one of the most important feature of TCP. Traditional implementations of TCP assume packet loss mainly due to congestion.TCP was initially developed for wired networks, so if there are any packet losses most of them were due to congestion.
+However in wireless this is not the case. In wireless networks significant number of packet losses could be due to channel errors. Hence assuming congestion to be the reason of packet loss every time and reducing the size of congestion window could be dangerous to the utilization of bandwidth in the network.
+TCP DCR attempts to solve this issue. It increases the time at which fast retransmit/recovery algorithms are triggered by a time interval 𝜏. This gives a chance to the link layer to recover the lost packet if it is due to channel errors. If not it triggers the congestion algorithms. Because of increasing the time for triggering the congestion control algorithms, we are tring to differentiate between packet loss due to channel errors and packet loss due to congestion. So layer 4 and layer 3 of tcp/ip stack are totally independent of one another. One of the main advantages of doing this is that we are not reducing the congestion window size for packet loss due to channel errors. Thereby incresing throughput and utilizing the bandwidth to the maximum extent.
+  
+### Modifications in TCP  
+1) Note the time of arrival of dupack.
+2) Find the value of RTT and trigger the congestion control algorithm only when the packet is not retrieved by the receiver in the delayed time i.e. RTT ( Round Trip Time ).
+3) If the packet failure is due to channel errors, then recover the packet using link layer retransmission.
+4) If the packet is not recovered in the delayed time, then trigger congestion control algorithm. 
 
-The Network Simulator, Version 3
-================================
+## STEPS FOR IMPLEMENTATION
+1) After understanding the concepts of TCP-DCR, refer the source code of ns3.
+2) tcp-option.h and tcp-option.cc files need changes, since we are adding additional feature to ns-3. To make comparison of TCP without DCR and TCP with DCR, adding dcr option is necessary.
+3) Refer tcp-socket.cc and tcp-socket.h files and understand all the modules and variables.
+4) Our main motto here is to delay the response of the sender to duplicate acknowledgements, so modify dupak() module in the tcp-socket-base.cc file. 
+5) Write a test script to make sure that the tcp-dcr feature is working fine.
 
-## Table of Contents:
+## FORMULA FOR DELAYED RESPONSE TIME
 
-1) [An overview](#an-open-source-project)
-2) [Building ns-3](#building-ns-3)
-3) [Running ns-3](#running-ns-3)
-4) [Getting access to the ns-3 documentation](#getting-access-to-the-ns-3-documentation)
-5) [Working with the development version of ns-3](#working-with-the-development-version-of-ns-3)
+  mdcrRetxThresh = mRetxThresh +  ((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize)
+  
+  Window () - Limit the size of in-flight data by cwnd
+  m_rtt - Round Trip Time
+  m_instRtt - Instantaneous Round Trip Time
+  m_tcb->segmentSize - segment size
 
-Note:  Much more substantial information about ns-3 can be found at
-https://www.nsnam.org
+#### Use the following steps to build ns-3
 
-## An Open Source project
-
-ns-3 is a free open source project aiming to build a discrete-event
-network simulator targeted for simulation research and education.
-This is a collaborative project; we hope that
-the missing pieces of the models we have not yet implemented
-will be contributed by the community in an open collaboration
-process.
-
-The process of contributing to the ns-3 project varies with
-the people involved, the amount of time they can invest
-and the type of model they want to work on, but the current
-process that the project tries to follow is described here:
-https://www.nsnam.org/developers/contributing-code/
-
-This README excerpts some details from a more extensive
-tutorial that is maintained at:
-https://www.nsnam.org/documentation/latest/
-
-## Building ns-3
-
-The code for the framework and the default models provided
-by ns-3 is built as a set of libraries. User simulations
-are expected to be written as simple programs that make
-use of these ns-3 libraries.
-
-To build the set of default libraries and the example
-programs included in this package, you need to use the
-tool 'waf'. Detailed information on how to use waf is
-included in the file doc/build.txt
-
-However, the real quick and dirty way to get started is to
-type the command
-```shell
-./waf configure --enable-examples
-```
-
-followed by
-
-```shell
-./waf
-```
-
-in the directory which contains this README file. The files
-built will be copied in the build/ directory.
-
-The current codebase is expected to build and run on the
-set of platforms listed in the [release notes](RELEASE_NOTES)
-file.
-
-Other platforms may or may not work: we welcome patches to
-improve the portability of the code to these other platforms.
-
-## Running ns-3
-
-On recent Linux systems, once you have built ns-3 (with examples
-enabled), it should be easy to run the sample programs with the
-following command, such as:
-
-```shell
-./waf --run simple-global-routing
-```
-
-That program should generate a `simple-global-routing.tr` text
-trace file and a set of `simple-global-routing-xx-xx.pcap` binary
-pcap trace files, which can be read by `tcpdump -tt -r filename.pcap`
-The program source can be found in the examples/routing directory.
-
-## Getting access to the ns-3 documentation
-
-Once you have verified that your build of ns-3 works by running
-the simple-point-to-point example as outlined in 3) above, it is
-quite likely that you will want to get started on reading
-some ns-3 documentation.
-
-All of that documentation should always be available from
-the ns-3 website: https://www.nsnam.org/documentation/.
-
-This documentation includes:
-
-  - a tutorial
-
-  - a reference manual
-
-  - models in the ns-3 model library
-
-  - a wiki for user-contributed tips: https://www.nsnam.org/wiki/
-
-  - API documentation generated using doxygen: this is
-    a reference manual, most likely not very well suited
-    as introductory text:
-    https://www.nsnam.org/doxygen/index.html
-
-## Working with the development version of ns-3
-
-If you want to download and use the development version of ns-3, you
-need to use the tool `git`. A quick and dirty cheat sheet is included
-in the manual, but reading through the git
-tutorials found in the Internet is usually a good idea if you are not
-familiar with it.
-
-If you have successfully installed git, you can get
-a copy of the development version with the following command:
-```shell
-git clone https://gitlab.com/nsnam/ns-3-dev.git
-```
-
-However, we recommend to follow the Gitlab guidelines for starters,
-that includes creating a Gitlab account, forking the ns-3-dev project
-under the new account's name, and then cloning the forked repository.
-You can find more information in the [manual](https://www.nsnam.org/docs/manual/html/working-with-git.html).
+1) Configure and build the repository using the following commands:
+    Configuring ns-3
+ - ./waf -d optimized configure
+    Build ns-3 using waf
+ - ./waf
+2) Running test script to check the performance of TCP-DCR
+ - ./waf --run="scratch/tcp-dcr-script.cc <options>=value"
+   available options:
+   - nWifi = Number of wifi STA devices
+   - tracing = Enable pcap tracing
+   - DCR = Enable DCR
+   - edt = EnergyDetectionThresholdThreshold energy of a received signal
+   EXAMPLE:
+    - ./waf --run="scratch/tcp-dcr-script.cc --dcr=false --edt=40.0 "
+    - ./waf --run="scratch/tcp-dcr-script.cc --dcr=true --edt=40.0 "
+    
+ 
+### References
+1) TCP DCR paper IEEE   https://ieeexplore.ieee.org/document/1492363/ 
+2) https://www.nsnam.org/
+3) https://www.nsnam.org/docs/models/html/tcp.html
