@@ -18,28 +18,26 @@ TCP DCR attempts to solve this issue. It increases the time at which fast retran
 
 ## Formula for Delayed Response Time
 
-  mdcrRetxThresh = mRetxThresh +  ((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize)
+  mdcrRetxThresh = mRetxThresh +  ((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize) </br>
   
-  Window () - Limit the size of in-flight data by cwnd
-  m_rtt - Round Trip Time
-  m_instRtt - Instantaneous Round Trip Time
-  m_tcb->segmentSize - segment size
+  Window () - Limit the size of in-flight data by cwnd </br>
+  m_rtt - Round Trip Time </br>
+  m_instRtt - Instantaneous Round Trip Time </br>
+  m_tcb->segmentSize - segment size </br>
 
 ## Use the following steps to build ns-3
 
-1) Configure and build the repository using the following commands:
-    Configuring ns-3
- - ./waf -d optimized configure
-    Build ns-3 using waf
- - ./waf
+1) Configure and build the repository using the following commands: </br>
+      - ./waf -d optimized configure </br>
+      - ./waf
 2) Running test script to check the performance of TCP-DCR
- - ./waf --run="scratch/tcp-dcr-script.cc [options]=value"
+ - ./waf --run="scratch/tcp-dcr-script.cc [options]=value" </br>
    available options: </br>
    - nWifi = Number of wifi STA devices
    - tracing = Enable pcap tracing
    - DCR = Enable DCR
-   - edt = EnergyDetectionThresholdThreshold energy of a received signal
-   EXAMPLE:
+   - edt = EnergyDetectionThresholdThreshold energy of a received signal </br>
+3) EXAMPLE
     - ./waf --run="scratch/tcp-dcr-script.cc --dcr=false --edt=40.0 "
     - ./waf --run="scratch/tcp-dcr-script.cc --dcr=true --edt=40.0 "
     
