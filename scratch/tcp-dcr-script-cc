@@ -1,0 +1,245 @@
+#include <fstream>
+#include "ns3/core-module.h"
+#include "ns3/point-to-point-module.h"
+#include "ns3/network-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/yans-wifi-phy.h"
+#include "ns3/wifi-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/csma-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/wifi-net-device.h"
+#include "ns3/wifi-phy.h"
+#include "ns3/packet.h"
+#include "ns3/flow-monitor-module.h"
+#include "ns3/flow-classifier.h"
+
+// References : examples/tutorial/third.cc, examples/wifi/wifi-tcp.cc and examples/tcp/tcp-variants-comparison.cc
+
+// Network Topology
+//
+//   Wifi 10.1.3.0
+//       AP
+//  *    *
+//  |    |    10.1.1.0
+// n2   n0 -------------- n1
+//         point-to-point
+
+using namespace ns3;
+
+NS_LOG_COMPONENT_DEFINE ("DCR Evaluation");
+
+uint64_t dropped = 0;
+
+// Counting Dropped Packets
+
+void RxDrop (Ptr<const Packet> p)
+{
+  dropped++;
+}
+
+int main (int argc, char *argv[])
+{
+  uint32_t nWifi = 1;
+  bool tracing = true;
+  bool dcr = true;
+  bool sack = false;
+  double edt = 45.0;
+
+  // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_INFO);
+  CommandLine cmd;
+  cmd.AddValue ("nWifi", "Number of wifi STA devices", nWifi);
+  cmd.AddValue ("tracing", "Enable pcap tracing", tracing);
+  cmd.AddValue ("DCR", "Enable Selective ACKnowledgements", dcr);
+  cmd.AddValue ("edt", "ns3::YansWifiPhy::EnergyDetectionThresholdThreshold energy of a received signal", edt);
+
+  cmd.Parse (argc,argv);
+
+  // Creating peer 2 peer nodes
+
+  NodeContainer p2pNodes;
+  p2pNodes.Create (2);
+
+  PointToPointHelper pointToPoint;
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
+
+  NetDeviceContainer p2pDevices;
+  p2pDevices = pointToPoint.Install (p2pNodes);
+
+  // Creating wifi node and wifi station nodes
+
+  NodeContainer wifiStaNodes;
+  wifiStaNodes.Create (nWifi);
+  NodeContainer wifiApNode = p2pNodes.Get (0);
+
+  Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpNewReno"));
+
+  // Configuring the datalink layer and physical layer attributes for wireless nodes
+
+  YansWifiChannelHelper channel_h = YansWifiChannelHelper::Default ();
+  channel_h.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+  channel_h.AddPropagationLoss ("ns3::JakesPropagationLossModel");
+  // channel_h.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9));
+
+  Ptr<YansWifiChannel> channel = channel_h.Create();
+
+  Config::SetDefault ("ns3::JakesProcess::DopplerFrequencyHz", DoubleValue (477.9));
+
+  YansWifiPhyHelper phyAP;
+  phyAP.SetErrorRateModel ("ns3::YansErrorRateModel");
+  YansWifiPhyHelper phyST;
+  phyST.SetErrorRateModel ("ns3::YansErrorRateModel");
+
+  phyAP.Set ("TxGain", DoubleValue (55));
+  phyAP.Set ("RxGain", DoubleValue (90));
+  phyST.Set("RxGain", DoubleValue (90));
+  phyAP.SetChannel (channel);
+  phyST.SetChannel (channel);
+
+  phyAP.Set ("TxPowerStart", DoubleValue (20.0));
+  phyAP.Set ("TxPowerEnd", DoubleValue (20.0));
+  phyAP.Set ("TxPowerLevels", UintegerValue (1));
+  phyST.Set ("RxNoiseFigure", DoubleValue(30.0));
+
+  WifiHelper wifi;
+  wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+
+  // Configuring mac layer in wifi nodes
+
+  WifiMacHelper mac;
+  Ssid ssid = Ssid ("ns-3-ssid");
+  mac.SetType ("ns3::StaWifiMac",
+               "Ssid", SsidValue (ssid),
+               "ActiveProbing", BooleanValue (true));
+
+  NetDeviceContainer staDevices;
+  staDevices = wifi.Install (phyST, mac, wifiStaNodes);
+
+
+  mac.SetType ("ns3::ApWifiMac",
+               "Ssid", SsidValue (ssid));
+
+  NetDeviceContainer apDevices;
+
+  apDevices = wifi.Install (phyAP, mac, wifiApNode);
+
+  Ptr<WifiNetDevice> wnd = staDevices.Get (0)->GetObject<WifiNetDevice> ();
+  Ptr<WifiPhy> wp = wnd->GetPhy ();
+  Ptr<YansWifiPhy> phySta = wp->GetObject<YansWifiPhy> ();
+
+  wifiStaNodes.Get (0)->TraceConnectWithoutContext ("PhyRxDrop", MakeCallback(&RxDrop));
+
+  // Adding mobility to wifi nodes
+
+  MobilityHelper mobility;
+
+  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                 "MinX", DoubleValue (0.0),
+                                 "MinY", DoubleValue (0.0),
+                                 "DeltaX", DoubleValue (100.0),
+                                 "DeltaY", DoubleValue (10.0),
+                                 "GridWidth", UintegerValue (3),
+                                 "LayoutType", StringValue ("RowFirst"));
+
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.Install (wifiStaNodes);
+
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.Install (wifiApNode);
+
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.Install (p2pNodes.Get (1));
+
+  // Configuring network layer all the nodes
+
+  InternetStackHelper stack;
+  stack.Install (p2pNodes.Get (1));
+  stack.Install (wifiApNode);
+  stack.Install (wifiStaNodes);
+
+  Ipv4AddressHelper address;
+
+  address.SetBase ("10.1.1.0", "255.255.255.0");
+  Ipv4InterfaceContainer p2pInterfaces, stInterface;
+  p2pInterfaces = address.Assign (p2pDevices);
+
+  address.SetBase ("10.1.3.0", "255.255.255.0");
+  stInterface = address.Assign (staDevices);
+  address.Assign (apDevices);
+
+  // Enable or disable DCR option
+
+  Config::SetDefault ("ns3::TcpSocketBase::DCR", BooleanValue (dcr));
+  Config::SetDefault ("ns3::TcpSocketBase::Sack", BooleanValue (sack));
+  uint16_t sinkPort = 8080;
+  Address sinkAddress (InetSocketAddress (stInterface.GetAddress (0),sinkPort));
+  PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                    InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
+  ApplicationContainer sinkApps = sink.Install (wifiStaNodes);
+  sinkApps.Start (Seconds (0.0));
+  sinkApps.Stop (Seconds (20.0));
+
+  OnOffHelper onOffHelper ("ns3::TcpSocketFactory", sinkAddress);
+  onOffHelper.SetAttribute ("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+  onOffHelper.SetAttribute ("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
+  onOffHelper.SetAttribute ("DataRate",StringValue ("10Mbps"));
+  onOffHelper.SetAttribute ("PacketSize", UintegerValue (1780));
+
+  // Adding TCP
+
+  ApplicationContainer source;
+
+  source.Add (onOffHelper.Install (p2pNodes.Get (1)));
+  source.Start (Seconds (1.0));
+  source.Stop (Seconds (10.0));
+
+  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+
+  phyAP.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
+
+  // Printing statistics
+
+  FlowMonitorHelper flowmon;
+  Ptr<FlowMonitor> monitor = flowmon.InstallAll();
+
+  Ptr<Ipv4> ipv4 = wifiStaNodes.Get (0)->GetObject<Ipv4>();
+  Ipv4InterfaceAddress iaddr = ipv4->GetAddress (1,0);
+  Ipv4Address addri = iaddr.GetLocal ();
+
+  Simulator::Stop (Seconds (20.0));
+  Simulator::Run ();
+
+  monitor->CheckForLostPackets();
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
+  std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats();
+  std::cout<<std::endl;
+  std::cout<<"        PRINTING STATISTICS"<<std::endl;
+  std::cout<<"**************************************"<<std::endl;
+  std::cout<<std::endl;
+  for(std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin(); i!= stats.end();i++)
+  {
+          Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(i->first);
+          std::cout<<"Flow"<<i->first <<"("<<t.sourceAddress<<"->"<<t.destinationAddress <<")\n";
+          std::cout<<" Tx Bytes: "<<i->second.txBytes<<"\n";
+          std::cout<<" Rx Bytes: "<<i->second.rxBytes<<"\n";
+          std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
+          std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
+          std::cout << "  lostPackets: " << i->second.lostPackets << "\n";
+          if(addri == t.destinationAddress)
+                std::cout << "  DroppedPackets: " << (dropped) << "\n";
+          std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / 9.0 / 1000 / 1000  << " Mbps\n";
+  }
+
+  std::cout << "\n\n";
+
+  if (tracing == true)
+    {
+      pointToPoint.EnablePcapAll ("eeosack");
+      phyST.EnablePcap ("Station", staDevices.Get (0));
+      phyAP.EnablePcap ("AccessPoint", apDevices);
+    }
+
+  Simulator::Destroy ();
+  return 0;
+}

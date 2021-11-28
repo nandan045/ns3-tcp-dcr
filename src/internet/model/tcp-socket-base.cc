@@ -1709,11 +1709,27 @@ TcpSocketBase::DupAck (uint32_t currentDelivered)
       if(m_dcrEnabled)
       {
 	SetRetxThresh(3);
-	std::cout<<"retx intially = "<<m_retxThresh<<std::endl;
+	std::cout<<std::endl;
+	std::cout<<"      DUPACK RECEIVED"<<std::endl;
+	std::cout<<"*****************************"<<std::endl;
+	std::cout<<std::endl;
+	std::cout<<"PRINTING VARIABLES"<<std::endl;
+	std::cout<<"=================="<<std::endl;
+	std::cout<<std::endl;
+	std::cout<<"RETX BEFORE DCR = "<<m_retxThresh<<std::endl;
+
 	// Formula to find the delayed retransmission time
-	uint32_t m_dcrRetxThresh =  m_retxThresh+((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize);
+
+	uint32_t m_dcrRetxThresh =  m_retxThresh + ((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize);
+	// uint32_t m_dcrRetxThresh = Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ());
+
+
+	std::cout<<"WINDOW = "<<Window()<<std::endl;
+       	std::cout<<"RTT ESTIMATED = "<<m_rtt->GetEstimate ().GetMilliSeconds ()<<std::endl;
+        std::cout<<"INSTANTANEOUS RTT = "<<1.0 / m_instRtt.GetMilliSeconds ()<<std::endl;
 	SetRetxThresh(m_dcrRetxThresh);
-	std::cout<<"retx finally = "<<m_retxThresh<<std::endl;
+	std::cout<<"RETX AFTER DCR = "<<m_retxThresh<<std::endl;
+	std::cout<<std::endl;
       }
     }
 
