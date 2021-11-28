@@ -33,7 +33,7 @@ TCP DCR attempts to solve this issue. It increases the time at which fast retran
     Build ns-3 using waf
  - ./waf
 2) Running test script to check the performance of TCP-DCR
- - ./waf --run="scratch/tcp-dcr-script.cc <options>=value"
+ - ./waf --run="scratch/tcp-dcr-script.cc [options]=value"
    available options: </br>
    - nWifi = Number of wifi STA devices
    - tracing = Enable pcap tracing
