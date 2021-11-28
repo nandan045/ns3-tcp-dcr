@@ -9,14 +9,14 @@ TCP DCR attempts to solve this issue. It increases the time at which fast retran
 3) If the packet failure is due to channel errors, then recover the packet using link layer retransmission.
 4) If the packet is not recovered in the delayed time, then trigger congestion control algorithm. 
 
-## STEPS FOR IMPLEMENTATION
+## Steps for Implementation
 1) After understanding the concepts of TCP-DCR, refer the source code of ns3.
 2) tcp-option.h and tcp-option.cc files need changes, since we are adding additional feature to ns-3. To make comparison of TCP without DCR and TCP with DCR, adding dcr option is necessary.
 3) Refer tcp-socket.cc and tcp-socket.h files and understand all the modules and variables.
 4) Our main motto here is to delay the response of the sender to duplicate acknowledgements, so modify dupak() module in the tcp-socket-base.cc file. 
 5) Write a test script to make sure that the tcp-dcr feature is working fine.
 
-## FORMULA FOR DELAYED RESPONSE TIME
+## Formula for Delayed Response Time
 
   mdcrRetxThresh = mRetxThresh +  ((Window () * (m_rtt->GetEstimate ().GetMilliSeconds () * 1.0 / m_instRtt.GetMilliSeconds ()))/m_tcb->m_segmentSize)
   
@@ -25,7 +25,7 @@ TCP DCR attempts to solve this issue. It increases the time at which fast retran
   m_instRtt - Instantaneous Round Trip Time
   m_tcb->segmentSize - segment size
 
-#### Use the following steps to build ns-3
+## Use the following steps to build ns-3
 
 1) Configure and build the repository using the following commands:
     Configuring ns-3
